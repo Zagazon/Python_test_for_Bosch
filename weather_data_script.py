@@ -60,10 +60,13 @@ df_new = df_raw.drop(columns=['cloudiness_pct']) # Mivel minden sorhoz None tart
 
 #Dátum változó konvertálás
 df_raw["data_calc_utc"] = pd.to_datetime(df_raw["data_calc_unix"], unit="s", utc=True) # Időformátumba konvertálás
+print(df_raw.data_calc_utc.head())
+
 df_raw["data_calc_local"] = df_raw["data_calc_utc"].dt.tz_convert("Europe/Budapest") # Helyi időzónára állítás
+print(df_raw.data_calc_local.hed())
 
 # Hétvége indikátor kimutatásokhoz 
-df_raw["is_weekend"] = df_raw["day_of_week"].isin(["Saturday", "Sunday"]).astype(int)
+df_raw["is_weekend"] = pd.to_datetime(df_raw["data_calc_local"]).dt.day_name().isin(["Saturday", "Sunday"]).astype(int)
 
 
 #%%
