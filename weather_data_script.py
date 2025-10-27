@@ -1,13 +1,9 @@
 import requests
+import time
 
 API_KEY = "a8e820e2c02af8c004ed22d832a2b23d"
 cities = ["Budapest", "Debrecen", "Sopron","Tokyo", "London", "Wien", "Hamburg"] # Szűrés bárosokra
 all_data = []
-
-
-import time
-from datetime import datetime
-
 
 #%% API call
 for i in range(15):
@@ -29,6 +25,9 @@ def flatten_weather_record(record: dict) -> dict:
     Egy OpenWeatherMap current weather JSON-ból visszaad egy lapos dict-et,
     csak a számunkra fontos mezőkkel.
     """
+    coord = record.get("coord", {})
+    clouds = record.get("clouds", {})
+    
     return {
         "city": record.get("name"),
         "temp_c": record.get("main", {}).get("temp"),
@@ -38,8 +37,10 @@ def flatten_weather_record(record: dict) -> dict:
         "weather_main": record.get("weather", [{}])[0].get("main"),
         "weather_desc": record.get("weather", [{}])[0].get("description"),
         "visibility_m": record.get("visibility"),
-        "cloudiness_pct": record.get("all"),
+        "cloudiness_pct": clouds.get("all"),
         "data_calc_unix": record.get("dt"),  # OpenWeather szerinti epoch timestamp (nyers)
+        "lat": coord.get("lat"),
+        "lon": coord.get("lon"),
     }
 
 # 1) all_data -> list[dict] sorokba konvertálás
@@ -52,18 +53,18 @@ df_raw = pd.DataFrame(flat_rows)
 df_raw.info() # Null -ok vizsgálata 
  
 for i in df_raw.columns:
-    if i != 'timestamp':
+    if i != "timestamp":
         print(i+ " : "+ str(set(df_raw[i]))) # Értékkészlet vizsgálat
         
-df_new = df_raw.drop(columns=['cloudiness_pct']) # Mivel minden sorhoz None tartozott, így üres változót kidobtam
 
+df_raw = df_raw.drop(columns="visibility_m")
 
 #Dátum változó konvertálás
 df_raw["data_calc_utc"] = pd.to_datetime(df_raw["data_calc_unix"], unit="s", utc=True) # Időformátumba konvertálás
 print(df_raw.data_calc_utc.head())
 
 df_raw["data_calc_local"] = df_raw["data_calc_utc"].dt.tz_convert("Europe/Budapest") # Helyi időzónára állítás
-print(df_raw.data_calc_local.hed())
+print(df_raw.data_calc_local.head())
 
 # Hétvége indikátor kimutatásokhoz 
 df_raw["is_weekend"] = pd.to_datetime(df_raw["data_calc_local"]).dt.day_name().isin(["Saturday", "Sunday"]).astype(int)
