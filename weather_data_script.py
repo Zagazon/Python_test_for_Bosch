@@ -2,11 +2,11 @@ import requests
 import time
 
 API_KEY = "a8e820e2c02af8c004ed22d832a2b23d"
-cities = ["Budapest", "Debrecen", "Sopron","Tokyo", "London", "Wien", "Hamburg"] # Szűrés bárosokra
+cities = ["Budapest", "Debrecen", "Sopron","Erfurt","München", "London", "Wien", "Hamburg", "Bordeaux", "Glasgow", "Amsterdam", "Brüssel"] # Szűrés bárosokra
 all_data = []
 
 #%% API call
-for i in range(15):
+for i in range(3):
     for city in cities:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
         response = requests.get(url) # API hívás
@@ -15,7 +15,7 @@ for i in range(15):
             all_data.append(data)
         else:
             print("Hiba történt a lekéréskor")
-    time.sleep(5)  # kis szünet a hívások között
+    time.sleep(5)  # hívások közötti szünet (esetleg timeseries adatokhoz)
   
 #%% create DataFrame 
 import pandas as pd
@@ -27,6 +27,7 @@ def flatten_weather_record(record: dict) -> dict:
     """
     coord = record.get("coord", {})
     clouds = record.get("clouds", {})
+    sys = record.get("sys", {})
     
     return {
         "city": record.get("name"),
@@ -39,8 +40,9 @@ def flatten_weather_record(record: dict) -> dict:
         "visibility_m": record.get("visibility"),
         "cloudiness_pct": clouds.get("all"),
         "data_calc_unix": record.get("dt"),  # OpenWeather szerinti epoch timestamp (nyers)
-        "lat": coord.get("lat"),
-        "lon": coord.get("lon"),
+        "latitude": coord.get("lat"),
+        "longitude": coord.get("lon"),
+        "country": sys.get("country"),
     }
 
 # 1) all_data -> list[dict] sorokba konvertálás
@@ -57,7 +59,7 @@ for i in df_raw.columns:
         print(i+ " : "+ str(set(df_raw[i]))) # Értékkészlet vizsgálat
         
 
-df_raw = df_raw.drop(columns="visibility_m")
+df_raw = df_raw.drop(columns="visibility_m") # Mivel egységesen 10000m (vagy annál több) így kidobásra kerül a változó
 
 #Dátum változó konvertálás
 df_raw["data_calc_utc"] = pd.to_datetime(df_raw["data_calc_unix"], unit="s", utc=True) # Időformátumba konvertálás
@@ -72,5 +74,6 @@ df_raw["is_weekend"] = pd.to_datetime(df_raw["data_calc_local"]).dt.day_name().i
 
 #%%
 # Save to CSV
-df_raw.to_csv("raw_weather.csv", index=False)
+df_raw.to_csv("raw_weather.csv", index=False, encoding="utf-8", sep=",", quoting=1)
+
 
